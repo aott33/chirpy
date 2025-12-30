@@ -30,7 +30,7 @@ func (cfg *apiConfig) resetHanlder(w http.ResponseWriter, r *http.Request) {
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	w.Write([]byte("OK\n"))
 }
 
 
@@ -43,11 +43,11 @@ func main() {
 
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(fileServerHandler))
 
-	mux.HandleFunc("/healthz", healthHandler)
+	mux.HandleFunc("GET /healthz", healthHandler)
 
-	mux.HandleFunc("/metrics", apiCfg.metricsHandler)
+	mux.HandleFunc("GET /metrics", apiCfg.metricsHandler)
 
-	mux.HandleFunc("/reset", apiCfg.resetHanlder)
+	mux.HandleFunc("POST /reset", apiCfg.resetHanlder)
 
 	server := &http.Server{Addr: ":8080", Handler: mux}
 
