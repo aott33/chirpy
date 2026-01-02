@@ -1,14 +1,23 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"slices"
+	"strings"
 	"sync/atomic"
+
+	"github.com/aott33/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits	atomic.Int32
+	dbQueries		database.Queries
 }
 
 type chirpParams struct {
@@ -19,9 +28,21 @@ type errorResponse struct {
 	Error	string `json:"error"`
 }
 
+type cleanBodyResponse struct {
+	CleanedBody	string `json:"cleaned_body"`
+}
+
 type validateResponse struct {
 	Valid	bool `json:"valid"`
 }	
+
+var badWords = []string{
+	"kerfuffle",
+	"sharbert",
+	"fornax",
+}
+
+var bleepStr = "****"
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -75,8 +96,10 @@ func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, validateResponse {
-		Valid: true,
+	cleanedMsg := checkMsg(params.Body)
+
+	writeJSON(w, http.StatusOK, cleanBodyResponse {
+		CleanedBody: cleanedMsg,
 	})
 }
 
@@ -93,11 +116,43 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Write(dat)
 }
 
+func checkMsg(msg string) string { 
+	lowerMsg := strings.ToLower(msg)
+	
+	strSlice := strings.Split(lowerMsg, " ")
+	originalSlice := strings.Split(msg, " ")
+
+	for i := range strSlice {
+		if slices.Contains(badWords, strSlice[i]) {
+			strSlice[i] = bleepStr
+		} else {
+			strSlice[i] = originalSlice[i]
+		}
+	}
+
+	cleanedMsg := strings.Join(strSlice, " ")
+
+	return cleanedMsg
+}
+
 
 func main() {
+	godotenv.Load()
+
+	dbURL := os.Getenv("DB_URL")
+	
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		fmt.Printf("Error opening database: %v", err)
+		return
+	}
+
+	dbQueries := database.New(db)
+
 	mux := http.NewServeMux()
 
 	apiCfg := &apiConfig{}
+	apiCfg.dbQueries = *dbQueries
 
 	fileServerHandler := http.StripPrefix("/app", http.FileServer(http.Dir(".")))
 
