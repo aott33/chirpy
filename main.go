@@ -11,6 +11,18 @@ type apiConfig struct {
 	fileserverHits	atomic.Int32
 }
 
+type chirpParams struct {
+	Body	string `json:"body"`
+}
+
+type errorResponse struct {
+	Error	string `json:"error"`
+}
+
+type validateResponse struct {
+	Valid	bool `json:"valid"`
+}	
+
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cfg.fileserverHits.Add(1)
@@ -32,8 +44,9 @@ func (cfg *apiConfig) metricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(result))	
 }
 
-func (cfg *apiConfig) resetHanlder(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) resetHandler(w http.ResponseWriter, r *http.Request) {
 	cfg.fileserverHits.Store(0)
+	w.WriteHeader(http.StatusOK)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -43,64 +56,40 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Body	string `json:"body"`
-	}
-
-	type returnError struct {
-		Error	string `json:"error"`
-	}
-
-	type returnValid struct {
-		Valid	bool `json:"valid"`
-	}
-	
-	w.Header().Set("Content-Type", "application/json")
-
 	decoder := json.NewDecoder(r.Body)
 
-	params := parameters{}
-
-	respBodyError := returnError{}
-	
-	respBodyValid := returnValid{}
+	var params chirpParams
 
 	err := decoder.Decode(&params)
-
 	if err != nil {	
-		respBodyError.Error = fmt.Sprintf("Something went wrong: %s", err)
-		dat, err := json.Marshal(respBodyError)
-		if err != nil {
-			fmt.Printf("Something went wrong: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}	
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(dat)
+		writeJSON(w, http.StatusBadRequest, errorResponse {
+			Error: "Something went wrong",
+		})	
 		return
 	}
 
-	if len(params.Body) > 400 {
-		respBodyError.Error = "Chirp is too long"
-		dat, err := json.Marshal(respBodyError)
-		if err != nil {
-			fmt.Printf("Something went wrong: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(dat)
+	if len(params.Body) > 140 {
+		writeJSON(w, http.StatusBadRequest, errorResponse {
+			Error: "Chirp is too long",
+		})
 		return
 	}
 
-	respBodyValid.Valid = true
-	dat, err := json.Marshal(respBodyValid)
+	writeJSON(w, http.StatusOK, validateResponse {
+		Valid: true,
+	})
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	dat, err := json.Marshal(v)
 	if err != nil {
 		fmt.Printf("Something went wrong: %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(200)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 	w.Write(dat)
 }
 
@@ -120,7 +109,7 @@ func main() {
 
 	mux.HandleFunc("POST /api/validate_chirp", validateChirpHandler)
 
-	mux.HandleFunc("POST /admin/reset", apiCfg.resetHanlder)
+	mux.HandleFunc("POST /admin/reset", apiCfg.resetHandler)
 
 	server := &http.Server{Addr: ":8080", Handler: mux}
 
