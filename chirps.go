@@ -22,10 +22,6 @@ type cleanBodyResponse struct {
 	CleanedBody	string `json:"cleaned_body"`
 }
 
-type validateResponse struct {
-	Valid	bool `json:"valid"`
-}	
-
 var badWords = []string{
 	"kerfuffle",
 	"sharbert",
@@ -35,10 +31,9 @@ var badWords = []string{
 var bleepStr = "****"
 
 func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-
 	var params chirpParams
-
+	
+	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&params)
 	if err != nil {	
 		writeJSON(w, http.StatusBadRequest, errorResponse {
