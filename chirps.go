@@ -22,7 +22,7 @@ type errorResponse struct {
 	Error		string		`json:"error"`
 }
 
-type createChirpResponse struct {
+type chirpResponse struct {
 	ID			uuid.UUID	`json:"id"`
 	CreatedAt	time.Time	`json:"created_at"`
 	UpdatedAt	time.Time	`json:"updated_at"`
@@ -37,6 +37,41 @@ var badWords = []string{
 }
 
 var bleepStr = "****"
+
+func (cfg *apiConfig) getChirpsHandler (w http.ResponseWriter, r *http.Request) {
+	var chirpSlc []chirpResponse
+
+	chirps, err := cfg.dbQueries.GetChirps(r.Context())
+	if err != nil {	
+		writeJSON(w, http.StatusBadRequest, errorResponse {
+			Error: "Something went wrong",
+		})	
+		return
+	}
+
+	for i := range chirps {
+		chirp := chirps[i]
+		tempChirp := chirpResponse{
+			ID: chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body: chirp.Body,
+			UserID: chirp.UserID,
+		}
+		chirpSlc = append(chirpSlc, tempChirp)
+	}
+
+	dat, err := json.Marshal(chirpSlc)
+	if err != nil {
+		fmt.Printf("Something went wrong: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(dat)
+}
 
 func (cfg *apiConfig) createChirpHandler (w http.ResponseWriter, r *http.Request) {
 	var params chirpParams
@@ -70,7 +105,7 @@ func (cfg *apiConfig) createChirpHandler (w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	chirpResponse := createChirpResponse {
+	chirpResponse := chirpResponse {
 		ID: chirpCreated.ID,
 		CreatedAt: chirpCreated.CreatedAt,
 		UpdatedAt: chirpCreated.UpdatedAt,
