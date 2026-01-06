@@ -27,11 +27,16 @@ func setupRoutes(mux *http.ServeMux, cfg *apiConfig) {
 	mux.HandleFunc("GET /admin/metrics", cfg.metricsHandler)
 	mux.HandleFunc("POST /admin/reset", cfg.resetHandler)
 	
-	// API Routes
+	// API Routes - chirps
 	mux.HandleFunc("POST /api/chirps", cfg.createChirpHandler)
 	mux.HandleFunc("GET /api/chirps", cfg.getChirpsHandler)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", cfg.getChirpByID)
+	
+	// API Routes - Users
+	mux.HandleFunc("POST /api/login", cfg.loginHandler)
 	mux.HandleFunc("POST /api/users", cfg.createUserHandler)
+	
+	// API Routes - Health
 	mux.HandleFunc("GET /api/healthz", healthHandler)
 }
 
