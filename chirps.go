@@ -38,6 +38,44 @@ var badWords = []string{
 
 var bleepStr = "****"
 
+func (cfg *apiConfig) getChirpByID (w http.ResponseWriter, r *http.Request) {
+	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {	
+		writeJSON(w, http.StatusNotFound, errorResponse {
+			Error: "Something went wrong",
+		})	
+		return
+	}
+
+	chirp, err := cfg.dbQueries.GetChirpByID(r.Context(), chirpID)
+	if err != nil {	
+		writeJSON(w, http.StatusNotFound, errorResponse {
+			Error: "Something went wrong",
+		})	
+		return
+	}
+
+	chirpResponse := chirpResponse {
+		ID: chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body: chirp.Body,
+		UserID: chirp.UserID,
+	}
+
+	dat, err := json.Marshal(chirpResponse)
+	if err != nil {
+		fmt.Printf("Something went wrong: %s", err)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(dat)
+	
+}
+
 func (cfg *apiConfig) getChirpsHandler (w http.ResponseWriter, r *http.Request) {
 	var chirpSlc []chirpResponse
 
