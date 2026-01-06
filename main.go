@@ -28,11 +28,9 @@ func setupRoutes(mux *http.ServeMux, cfg *apiConfig) {
 	mux.HandleFunc("POST /admin/reset", cfg.resetHandler)
 	
 	// API Routes
-	mux.HandleFunc("POST /api/chirps", validateChirpHandler)
+	mux.HandleFunc("POST /api/chirps", cfg.createChirpHandler)
 	mux.HandleFunc("POST /api/users", cfg.createUserHandler)
 	mux.HandleFunc("GET /api/healthz", healthHandler)
-
-
 }
 
 func main() {

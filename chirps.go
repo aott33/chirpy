@@ -6,20 +6,28 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
+	"github.com/aott33/chirpy/internal/database"
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
 type chirpParams struct {
-	Body	string `json:"body"`
+	Body		string		`json:"body"`
+	UserID		uuid.UUID	`json:"user_id"`
 }
 
 type errorResponse struct {
-	Error	string `json:"error"`
+	Error		string		`json:"error"`
 }
 
-type cleanBodyResponse struct {
-	CleanedBody	string `json:"cleaned_body"`
+type createChirpResponse struct {
+	ID			uuid.UUID	`json:"id"`
+	CreatedAt	time.Time	`json:"created_at"`
+	UpdatedAt	time.Time	`json:"updated_at"`
+	Body		string		`json:"body"`
+	UserID		uuid.UUID	`json:"user_id"`
 }
 
 var badWords = []string{
@@ -30,9 +38,9 @@ var badWords = []string{
 
 var bleepStr = "****"
 
-func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) createChirpHandler (w http.ResponseWriter, r *http.Request) {
 	var params chirpParams
-	
+
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&params)
 	if err != nil {	
@@ -51,9 +59,35 @@ func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
 
 	cleanedMsg := checkMsg(params.Body)
 
-	writeJSON(w, http.StatusOK, cleanBodyResponse {
-		CleanedBody: cleanedMsg,
+	chirpCreated, err := cfg.dbQueries.CreateChirp(r.Context(), database.CreateChirpParams{
+		Body: cleanedMsg,
+		UserID: params.UserID,
 	})
+	if err != nil {	
+		writeJSON(w, http.StatusBadRequest, errorResponse {
+			Error: "Something went wrong",
+		})	
+		return
+	}
+
+	chirpResponse := createChirpResponse {
+		ID: chirpCreated.ID,
+		CreatedAt: chirpCreated.CreatedAt,
+		UpdatedAt: chirpCreated.UpdatedAt,
+		Body: chirpCreated.Body,
+		UserID: chirpCreated.UserID,
+	}
+
+	dat, err := json.Marshal(chirpResponse)
+	if err != nil {
+		fmt.Printf("Something went wrong: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(dat)		
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
