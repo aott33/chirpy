@@ -12,8 +12,9 @@ import (
 )
 
 type userParams struct {
-	Email		string 	`json:"email"`
-	Password	string	`json:"password"`
+	Email				string 	`json:"email"`
+	Password			string	`json:"password"`
+	ExpiresInSeconds	*int	`json:"expires_in_seconds"`
 }
 
 type User struct {
@@ -25,6 +26,7 @@ type User struct {
 
 func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 	var params userParams
+	var expiresInSeconds int = 3600
 
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&params)
@@ -32,6 +34,10 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Something went wrong: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
+	}
+
+	if params.ExpiresInSeconds != nil {
+		expiresInSeconds = *params.ExpiresInSeconds
 	}
 	
 	userInfo, err := cfg.dbQueries.GetUserPassword(r.Context(), params.Email)

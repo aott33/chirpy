@@ -16,6 +16,7 @@ type apiConfig struct {
 	fileserverHits	atomic.Int32
 	dbQueries		database.Queries
 	platform		string
+	jwtSecret		string
 }
 
 func setupRoutes(mux *http.ServeMux, cfg *apiConfig) {
@@ -44,6 +45,7 @@ func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
+	jwtSecretEnv := os.Getenv("JWT_SECRET")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		fmt.Printf("Error opening database: %v", err)
@@ -55,7 +57,8 @@ func main() {
 	mux := http.NewServeMux()
 	apiCfg := &apiConfig{
 		dbQueries: *dbQueries,
-		platform: platform,	
+		platform: platform,
+		jwtSecret: jwtSecretEnv,
 	}
 	
 	setupRoutes(mux, apiCfg)	
