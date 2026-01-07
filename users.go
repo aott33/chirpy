@@ -12,21 +12,28 @@ import (
 )
 
 type userParams struct {
-	Email				string 	`json:"email"`
-	Password			string	`json:"password"`
-	ExpiresInSeconds	*int	`json:"expires_in_seconds"`
+	Email				string 		`json:"email"`
+	Password			string		`json:"password"`
+	ExpiresInSeconds	*int		`json:"expires_in_seconds"`
 }
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	ID        			uuid.UUID 	`json:"id"`
+	CreatedAt 			time.Time 	`json:"created_at"`
+	UpdatedAt 			time.Time 	`json:"updated_at"`
+	Email    			string    	`json:"email"`
+}
+
+type UserLogin struct {
+	ID				uuid.UUID 	`json:"id"`
+	CreatedAt		time.Time 	`json:"created_at"`
+	UpdatedAt		time.Time 	`json:"updated_at"`
+	Email			string    	`json:"email"`
+	Token			string		`json:"token"`	
 }
 
 func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 	var params userParams
-	var expiresInSeconds int = 3600
 
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&params)
@@ -34,11 +41,7 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Something went wrong: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	}
-
-	if params.ExpiresInSeconds != nil {
-		expiresInSeconds = *params.ExpiresInSeconds
-	}
+	}	
 	
 	userInfo, err := cfg.dbQueries.GetUserPassword(r.Context(), params.Email)
 	if err != nil {
@@ -59,11 +62,25 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := User{
+	expiresInSeconds := 3600
+
+	if params.ExpiresInSeconds != nil {
+    	expiresInSeconds = min(*params.ExpiresInSeconds, 3600)
+	}
+	
+	token, err := auth.MakeJWT(userInfo.ID, cfg.jwtSecret, time.Duration(expiresInSeconds)*time.Second)
+	if err != nil {
+		fmt.Printf("Something went wrong: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user := UserLogin{
 		ID: userInfo.ID,
 		CreatedAt: userInfo.CreatedAt,
 		UpdatedAt: userInfo.UpdatedAt,
 		Email: userInfo.Email,
+		Token: token,
 	}
 
 	dat, err := json.Marshal(user)

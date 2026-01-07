@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aott33/chirpy/internal/auth"
 	"github.com/aott33/chirpy/internal/database"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -15,7 +16,6 @@ import (
 
 type chirpParams struct {
 	Body		string		`json:"body"`
-	UserID		uuid.UUID	`json:"user_id"`
 }
 
 type errorResponse struct {
@@ -114,8 +114,24 @@ func (cfg *apiConfig) getChirpsHandler (w http.ResponseWriter, r *http.Request) 
 func (cfg *apiConfig) createChirpHandler (w http.ResponseWriter, r *http.Request) {
 	var params chirpParams
 
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {	
+		writeJSON(w, http.StatusUnauthorized, errorResponse {
+			Error: fmt.Sprintf("Something went wrong: %v", err),
+		})	
+		return
+	}
+
+	uuidVal, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {	
+		writeJSON(w, http.StatusUnauthorized, errorResponse {
+			Error: fmt.Sprintf("Something went wrong: %v", err),
+		})	
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {	
 		writeJSON(w, http.StatusBadRequest, errorResponse {
 			Error: "Something went wrong",
@@ -134,7 +150,7 @@ func (cfg *apiConfig) createChirpHandler (w http.ResponseWriter, r *http.Request
 
 	chirpCreated, err := cfg.dbQueries.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body: cleanedMsg,
-		UserID: params.UserID,
+		UserID: uuidVal,
 	})
 	if err != nil {	
 		writeJSON(w, http.StatusBadRequest, errorResponse {
