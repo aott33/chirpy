@@ -29,7 +29,8 @@ type UserLogin struct {
 	CreatedAt		time.Time 	`json:"created_at"`
 	UpdatedAt		time.Time 	`json:"updated_at"`
 	Email			string    	`json:"email"`
-	Token			string		`json:"token"`	
+	Token			string		`json:"token"`
+	RefreshToken	string		`json:"refresh_token"`
 }
 
 func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -75,12 +76,25 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	refreshToken, _ := auth.MakeRefreshToken()
+	
+	refreshTokenEntry, err := cfg.dbQueries.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		UserID: userInfo.ID,
+		Token: refreshToken,
+	})
+	if err != nil {
+		fmt.Printf("Something went wrong: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	user := UserLogin{
 		ID: userInfo.ID,
 		CreatedAt: userInfo.CreatedAt,
 		UpdatedAt: userInfo.UpdatedAt,
 		Email: userInfo.Email,
 		Token: token,
+		RefreshToken: refreshTokenEntry.Token,
 	}
 
 	dat, err := json.Marshal(user)
@@ -141,4 +155,25 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(dat)	
+}
+
+func (cfg *apiConfig) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {	
+		writeJSON(w, http.StatusUnauthorized, errorResponse {
+			Error: fmt.Sprintf("Something went wrong: %v", err),
+		})	
+		return
+	}
+	
+	refreshTokenEntry, err := cfg.dbQueries.GetRefreshToken(r.Context(), token)
+	if err != nil {	
+		writeJSON(w, http.StatusUnauthorized, errorResponse {
+			Error: fmt.Sprintf("Something went wrong: %v", err),
+		})	
+		return
+	}
+
+
+
 }
