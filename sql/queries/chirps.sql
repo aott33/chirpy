@@ -11,11 +11,15 @@ RETURNING *;
 
 -- name: GetChirpByID :one
 SELECT * FROM chirps
-WHERE $1 = ID;
+WHERE id = $1;
 
 -- name: GetChirps :many
 SELECT * FROM chirps
 ORDER BY created_at ASC;
+
+-- name: DeleteChirpByID :exec
+DELETE FROM chirps
+WHERE id = $1;
 
 -- name: DeleteChirps :exec
 DELETE FROM chirps;

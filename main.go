@@ -31,7 +31,8 @@ func setupRoutes(mux *http.ServeMux, cfg *apiConfig) {
 	// API Routes - chirps
 	mux.HandleFunc("POST /api/chirps", cfg.createChirpHandler)
 	mux.HandleFunc("GET /api/chirps", cfg.getChirpsHandler)
-	mux.HandleFunc("GET /api/chirps/{chirpID}", cfg.getChirpByID)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", cfg.getChirpByIDHandler)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", cfg.deleteChirpHandler)
 	
 	// API Routes - Users
 	mux.HandleFunc("POST /api/login", cfg.loginHandler)
