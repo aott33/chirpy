@@ -37,6 +37,7 @@ func setupRoutes(mux *http.ServeMux, cfg *apiConfig) {
 	mux.HandleFunc("POST /api/login", cfg.loginHandler)
 	mux.HandleFunc("POST /api/users", cfg.createUserHandler)
 	mux.HandleFunc("POST /api/refresh", cfg.refreshTokenHandler)
+	mux.HandleFunc("POST /api/revoke", cfg.revokeTokenHandler)
 	
 	// API Routes - Health
 	mux.HandleFunc("GET /api/healthz", healthHandler)

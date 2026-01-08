@@ -52,13 +52,15 @@ func (q *Queries) DeleteRefreshTokens(ctx context.Context) error {
 	return err
 }
 
-const getRefreshToken = `-- name: GetRefreshToken :one
+const getUserFromRefreshToken = `-- name: GetUserFromRefreshToken :one
 SELECT token, created_at, updated_at, user_id, expires_at, revoked_at FROM refresh_tokens
-WHERE token = $1
+WHERE token = $1 AND
+    revoked_at IS NULL AND
+    expires_at > NOW()
 `
 
-func (q *Queries) GetRefreshToken(ctx context.Context, token string) (RefreshToken, error) {
-	row := q.db.QueryRowContext(ctx, getRefreshToken, token)
+func (q *Queries) GetUserFromRefreshToken(ctx context.Context, token string) (RefreshToken, error) {
+	row := q.db.QueryRowContext(ctx, getUserFromRefreshToken, token)
 	var i RefreshToken
 	err := row.Scan(
 		&i.Token,
@@ -71,21 +73,14 @@ func (q *Queries) GetRefreshToken(ctx context.Context, token string) (RefreshTok
 	return i, err
 }
 
-const getUserFromRefreshToken = `-- name: GetUserFromRefreshToken :one
-SELECT token, created_at, updated_at, user_id, expires_at, revoked_at FROM refresh_tokens
-WHERE user_id = $1
+const revokeToken = `-- name: RevokeToken :exec
+UPDATE refresh_tokens
+SET updated_at = NOW(),
+    revoked_at = NOW()
+WHERE token = $1
 `
 
-func (q *Queries) GetUserFromRefreshToken(ctx context.Context, userID uuid.UUID) (RefreshToken, error) {
-	row := q.db.QueryRowContext(ctx, getUserFromRefreshToken, userID)
-	var i RefreshToken
-	err := row.Scan(
-		&i.Token,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.UserID,
-		&i.ExpiresAt,
-		&i.RevokedAt,
-	)
-	return i, err
+func (q *Queries) RevokeToken(ctx context.Context, token string) error {
+	_, err := q.db.ExecContext(ctx, revokeToken, token)
+	return err
 }

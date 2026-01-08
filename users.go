@@ -14,7 +14,10 @@ import (
 type userParams struct {
 	Email				string 		`json:"email"`
 	Password			string		`json:"password"`
-	ExpiresInSeconds	*int		`json:"expires_in_seconds"`
+}
+
+type tokenResponse struct {
+	Token				string		`json:"token"`		
 }
 
 type User struct {
@@ -63,13 +66,7 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expiresInSeconds := 3600
-
-	if params.ExpiresInSeconds != nil {
-    	expiresInSeconds = min(*params.ExpiresInSeconds, 3600)
-	}
-	
-	token, err := auth.MakeJWT(userInfo.ID, cfg.jwtSecret, time.Duration(expiresInSeconds)*time.Second)
+	token, err := auth.MakeJWT(userInfo.ID, cfg.jwtSecret) 
 	if err != nil {
 		fmt.Printf("Something went wrong: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -166,7 +163,7 @@ func (cfg *apiConfig) refreshTokenHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	
-	refreshTokenEntry, err := cfg.dbQueries.GetRefreshToken(r.Context(), token)
+	refreshTokenEntry, err := cfg.dbQueries.GetUserFromRefreshToken(r.Context(), token)
 	if err != nil {	
 		writeJSON(w, http.StatusUnauthorized, errorResponse {
 			Error: fmt.Sprintf("Something went wrong: %v", err),
@@ -174,6 +171,42 @@ func (cfg *apiConfig) refreshTokenHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	tokenRefreshed, err := auth.MakeJWT(refreshTokenEntry.UserID, cfg.jwtSecret)
+	if err != nil {	
+		writeJSON(w, http.StatusInternalServerError, errorResponse {
+			Error: fmt.Sprintf("Something went wrong: %v", err),
+		})	
+		return
+	}
 
+	tokenResponse := tokenResponse {
+		Token: tokenRefreshed,
+	}
 
+	dat, err := json.Marshal(tokenResponse)
+	if err != nil {
+		fmt.Printf("Something went wrong: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(dat)	
+}
+
+func (cfg *apiConfig) revokeTokenHandler(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {	
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	
+	err = cfg.dbQueries.RevokeToken(r.Context(), token)
+	if err != nil {	
+		w.WriteHeader(http.StatusInternalServerError)	
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
