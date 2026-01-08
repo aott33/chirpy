@@ -154,6 +154,68 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) 
 	w.Write(dat)	
 }
 
+func (cfg *apiConfig) updateUserInfoHandler(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		fmt.Printf("Something went wrong: %v", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	uuidVal, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {	
+		fmt.Printf("Something went wrong: %v", err)
+		w.WriteHeader(http.StatusUnauthorized)	
+		return
+	}
+
+	var params userParams
+
+	decoder := json.NewDecoder(r.Body)
+	err = decoder.Decode(&params)
+	if err != nil {
+		fmt.Printf("Something went wrong: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		fmt.Printf("Something went wrong: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	userUpdated, err := cfg.dbQueries.UpdateUserInfo(r.Context(), database.UpdateUserInfoParams{
+		Email: params.Email,
+		HashedPassword: hashedPassword,
+		ID: uuidVal,
+	})
+	if err != nil {
+		fmt.Printf("Something went wrong: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	user := User{
+		ID: userUpdated.ID,
+		CreatedAt: userUpdated.CreatedAt,
+		UpdatedAt: userUpdated.UpdatedAt,
+		Email: userUpdated.Email,
+	}
+
+	dat, err := json.Marshal(user)
+	if err != nil {
+		fmt.Printf("Something went wrong: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(dat)	
+}
+
 func (cfg *apiConfig) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {	

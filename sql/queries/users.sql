@@ -9,10 +9,16 @@ VALUES (
 )
 RETURNING *;
 
-
 -- name: GetUserPassword :one
 SELECT * FROM users
 WHERE email = $1;
+
+-- name: UpdateUserInfo :one
+UPDATE users
+SET email = $1,
+    hashed_password = $2
+WHERE id = $3
+RETURNING *;
 
 -- name: DeleteUsers :exec
 DELETE FROM users;
