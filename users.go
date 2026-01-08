@@ -25,6 +25,7 @@ type User struct {
 	CreatedAt 			time.Time 	`json:"created_at"`
 	UpdatedAt 			time.Time 	`json:"updated_at"`
 	Email    			string    	`json:"email"`
+	IsChirpyRed			bool		`json:"is_chirpy_red"`
 }
 
 type UserLogin struct {
@@ -34,6 +35,7 @@ type UserLogin struct {
 	Email			string    	`json:"email"`
 	Token			string		`json:"token"`
 	RefreshToken	string		`json:"refresh_token"`
+	IsChirpyRed		bool		`json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -92,6 +94,7 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		Email: userInfo.Email,
 		Token: token,
 		RefreshToken: refreshTokenEntry.Token,
+		IsChirpyRed: userInfo.IsChirpyRed,
 	}
 
 	dat, err := json.Marshal(user)
@@ -140,6 +143,7 @@ func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) 
 		CreatedAt: userCreated.CreatedAt,
 		UpdatedAt: userCreated.UpdatedAt,
 		Email: userCreated.Email,
+		IsChirpyRed: userCreated.IsChirpyRed,
 	}
 
 	dat, err := json.Marshal(user)
@@ -202,6 +206,7 @@ func (cfg *apiConfig) updateUserInfoHandler(w http.ResponseWriter, r *http.Reque
 		CreatedAt: userUpdated.CreatedAt,
 		UpdatedAt: userUpdated.UpdatedAt,
 		Email: userUpdated.Email,
+		IsChirpyRed: userUpdated.IsChirpyRed,
 	}
 
 	dat, err := json.Marshal(user)

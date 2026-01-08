@@ -17,6 +17,7 @@ type apiConfig struct {
 	dbQueries		database.Queries
 	platform		string
 	jwtSecret		string
+	polkaKey		string
 }
 
 func setupRoutes(mux *http.ServeMux, cfg *apiConfig) {
@@ -41,6 +42,9 @@ func setupRoutes(mux *http.ServeMux, cfg *apiConfig) {
 	mux.HandleFunc("POST /api/refresh", cfg.refreshTokenHandler)
 	mux.HandleFunc("POST /api/revoke", cfg.revokeTokenHandler)
 	
+	// API Routes - Webhooks
+	mux.HandleFunc("POST /api/polka/webhooks", cfg.webhooksHandler)
+
 	// API Routes - Health
 	mux.HandleFunc("GET /api/healthz", healthHandler)
 }
@@ -48,8 +52,9 @@ func setupRoutes(mux *http.ServeMux, cfg *apiConfig) {
 func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
-	platform := os.Getenv("PLATFORM")
+	platformEnv := os.Getenv("PLATFORM")
 	jwtSecretEnv := os.Getenv("JWT_SECRET")
+	polkaKeyEnv := os.Getenv("POLKA_KEY")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		fmt.Printf("Error opening database: %v", err)
@@ -61,8 +66,9 @@ func main() {
 	mux := http.NewServeMux()
 	apiCfg := &apiConfig{
 		dbQueries: *dbQueries,
-		platform: platform,
+		platform: platformEnv,
 		jwtSecret: jwtSecretEnv,
+		polkaKey: polkaKeyEnv,
 	}
 	
 	setupRoutes(mux, apiCfg)	

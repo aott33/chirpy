@@ -119,13 +119,36 @@ func (cfg *apiConfig) getChirpByIDHandler (w http.ResponseWriter, r *http.Reques
 
 func (cfg *apiConfig) getChirpsHandler (w http.ResponseWriter, r *http.Request) {
 	var chirpSlc []chirpResponse
+	var chirps []database.Chirp
+	var authorID uuid.UUID
+	var err error 
 
-	chirps, err := cfg.dbQueries.GetChirps(r.Context())
-	if err != nil {	
+	hasAuthorID := r.URL.Query().Has("author_id")
+
+	if hasAuthorID {
+		authorID, err = uuid.Parse(r.URL.Query().Get("author_id"))
+		if err != nil {	
 		writeJSON(w, http.StatusBadRequest, errorResponse {
-			Error: "Something went wrong",
-		})	
-		return
+				Error: "Something went wrong",
+			})	
+			return
+		}	
+
+		chirps, err = cfg.dbQueries.GetChirpsByAuthorID(r.Context(), authorID)
+		if err != nil {	
+			writeJSON(w, http.StatusInternalServerError, errorResponse {
+				Error: "Something went wrong",
+			})	
+			return
+		}	
+	} else {
+		chirps, err = cfg.dbQueries.GetChirps(r.Context())
+		if err != nil {	
+			writeJSON(w, http.StatusInternalServerError, errorResponse {
+				Error: "Something went wrong",
+			})	
+			return
+		}
 	}
 
 	for i := range chirps {
