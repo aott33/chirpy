@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -124,6 +125,12 @@ func (cfg *apiConfig) getChirpsHandler (w http.ResponseWriter, r *http.Request) 
 	var err error 
 
 	hasAuthorID := r.URL.Query().Has("author_id")
+	hasSort := r.URL.Query().Has("sort")
+	sortOrder := "asc"
+
+	if hasSort {
+		sortOrder = r.URL.Query().Get("sort")
+	}
 
 	if hasAuthorID {
 		authorID, err = uuid.Parse(r.URL.Query().Get("author_id"))
@@ -149,6 +156,16 @@ func (cfg *apiConfig) getChirpsHandler (w http.ResponseWriter, r *http.Request) 
 			})	
 			return
 		}
+	}
+
+	if sortOrder == "desc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+		})
+	} else {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+		})
 	}
 
 	for i := range chirps {

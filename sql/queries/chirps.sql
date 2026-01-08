@@ -14,13 +14,11 @@ SELECT * FROM chirps
 WHERE id = $1;
 
 -- name: GetChirps :many
-SELECT * FROM chirps
-ORDER BY created_at ASC;
+SELECT * FROM chirps;
 
 -- name: GetChirpsByAuthorID :many
 SELECT * FROM chirps
-WHERE user_id = $1
-ORDER BY created_at ASC;
+WHERE user_id = $1;
 
 -- name: DeleteChirpByID :exec
 DELETE FROM chirps
